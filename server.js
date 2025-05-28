@@ -8,36 +8,9 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// GHL Authentication details
-const GHL_CLIENT_ID = process.env.GHL_CLIENT_ID;
-const GHL_CLIENT_SECRET = process.env.GHL_CLIENT_SECRET;
-const GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN;
-let GHL_ACCESS_TOKEN = '';
-let tokenExpiry = 0;
-
-// Function to get/refresh access token
-async function getAccessToken() {
-  const now = Date.now();
-  if (now >= tokenExpiry) {
-    try {
-      const response = await axios.post('https://services.leadconnectorhq.com/oauth/token', {
-        client_id: GHL_CLIENT_ID,
-        client_secret: GHL_CLIENT_SECRET,
-        grant_type: 'refresh_token',
-        refresh_token: GHL_REFRESH_TOKEN
-      });
-      
-      GHL_ACCESS_TOKEN = response.data.access_token;
-      // Set token to expire 1 hour from now (3600 seconds)
-      tokenExpiry = now + (response.data.expires_in * 1000);
-      return GHL_ACCESS_TOKEN;
-    } catch (error) {
-      console.error('Error refreshing token:', error.response?.data || error.message);
-      throw new Error('Authentication failed');
-    }
-  }
-  return GHL_ACCESS_TOKEN;
-}
+// GHL Access Token from Private Integration
+const GHL_ACCESS_TOKEN = process.env.GHL_ACCESS_TOKEN;
+const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID; // Your location ID
 
 // Endpoint to schedule a discovery call
 app.post('/api/schedule', async (req, res) => {
@@ -49,10 +22,7 @@ app.post('/api/schedule', async (req, res) => {
       return res.status(400).json({ error: 'Name and email are required' });
     }
     
-    // Get fresh access token
-    const accessToken = await getAccessToken();
-    
-    // 1. First create or update contact in GHL
+    // 1. Create or update contact in GHL
     const contactResponse = await axios.post(
       'https://services.leadconnectorhq.com/contacts', 
       {
@@ -69,7 +39,7 @@ app.post('/api/schedule', async (req, res) => {
       },
       {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
           'Version': '2021-07-28'
         }
       }
@@ -91,7 +61,7 @@ app.post('/api/schedule', async (req, res) => {
           endDate: endDate.toISOString().split('T')[0],
         },
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
           'Version': '2021-07-28'
         }
       }
@@ -100,7 +70,6 @@ app.post('/api/schedule', async (req, res) => {
     // 3. Return available slots and a booking URL
     const bookingUrl = `https://yourcompany.gohighlevel.com/appointment/${calendarId}?contact_id=${contactId}`;
     
-    // Return first 5 available slots and booking URL
     return res.json({
       success: true,
       available_slots: slotsResponse.data.slots.slice(0, 5),
@@ -115,6 +84,4 @@ app.post('/api/schedule', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app<span class="cursor">█</span>
