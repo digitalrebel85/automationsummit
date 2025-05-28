@@ -1,4 +1,4 @@
-// server.js
+// server.js - simplified version
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
@@ -10,9 +10,8 @@ app.use(cors());
 
 // GHL Access Token from Private Integration
 const GHL_ACCESS_TOKEN = process.env.GHL_ACCESS_TOKEN;
-const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID; // Your location ID
 
-// Endpoint to schedule a discovery call
+// Endpoint to process discovery call requests
 app.post('/api/schedule', async (req, res) => {
   try {
     const { name, email, phone, business_challenge, current_revenue, business_type } = req.body;
@@ -22,66 +21,54 @@ app.post('/api/schedule', async (req, res) => {
       return res.status(400).json({ error: 'Name and email are required' });
     }
     
-    // 1. Create or update contact in GHL
-    const contactResponse = await axios.post(
-      'https://services.leadconnectorhq.com/contacts', 
-      {
-        email,
-        firstName: name.split(' ')[0],
-        lastName: name.includes(' ') ? name.split(' ').slice(1).join(' ') : '',
-        phone: phone || '',
-        customField: {
-          business_challenge: business_challenge || '',
-          current_revenue: current_revenue || '',
-          business_type: business_type || '',
-          source: 'Automation Summit GPT'
-        }
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
-          'Version': '2021-07-28'
-        }
-      }
-    );
-    
-    const contactId = contactResponse.data.contact.id;
-    
-    // 2. Get available calendar slots (next 7 days)
-    const calendarId = process.env.GHL_CALENDAR_ID; // Your calendar ID from GHL
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7);
-    
-    const slotsResponse = await axios.get(
-      `https://services.leadconnectorhq.com/calendars/${calendarId}/slots`,
-      {
-        params: {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
+    // 1. Create or update contact in GHL first
+    try {
+      await axios.post(
+        'https://services.leadconnectorhq.com/contacts', 
+        {
+          email,
+          firstName: name.split(' ')[0],
+          lastName: name.includes(' ') ? name.split(' ').slice(1).join(' ') : '',
+          phone: phone || '',
+          customField: {
+            business_challenge: business_challenge || '',
+            current_revenue: current_revenue || '',
+            business_type: business_type || '',
+            source: 'Automation Summit GPT'
+          }
         },
-        headers: {
-          'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
-          'Version': '2021-07-28'
+        {
+          headers: {
+            'Authorization': `Bearer ${GHL_ACCESS_TOKEN}`,
+            'Version': '2021-07-28'
+          }
         }
-      }
-    );
+      );
+    } catch (contactError) {
+      console.error('Warning: Contact creation failed, but proceeding:', contactError.message);
+      // We'll continue even if contact creation fails, since the booking link will collect info
+    }
     
-    // 3. Return available slots and a booking URL
-    const bookingUrl = `https://yourcompany.gohighlevel.com/appointment/${calendarId}?contact_id=${contactId}`;
+    // 2. Return the booking link directly
+    // Using your permanent booking link
+    const bookingUrl = '// Enhanced booking URL with tracking parameters
+const bookingUrl = 'https://api.biznovaai.com/widget/booking/7iSSynzhdI3On1JqdQn6'
+  + '?utm_source=custom_gpt&utm_medium=discovery_assistant&utm_campaign=automation_summit';
+';
     
     return res.json({
       success: true,
-      available_slots: slotsResponse.data.slots.slice(0, 5),
-      booking_url: bookingUrl,
-      contact_id: contactId
+      message: "Ready to schedule your discovery call",
+      booking_url: bookingUrl
     });
     
   } catch (error) {
-    console.error('Error scheduling appointment:', error.response?.data || error.message);
-    return res.status(500).json({ error: 'Failed to schedule appointment' });
+    console.error('Error processing request:', error.message);
+    return res.status(500).json({ error: 'Failed to process request' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app<span class="cursor">█</span>
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
